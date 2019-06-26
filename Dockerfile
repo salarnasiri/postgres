@@ -1,6 +1,9 @@
 FROM postgres:10.9
 MAINTAINER SALAR
 
+RUN apt-get update && apt-get install -y htop mtr iputils-ping telnet traceroute vim iproute2 dnsutils nano && \ 
+    apt-get -y autoremove && rm -rf /var/lib/apt/lists/*
+
 ENV PG_MAX_WAL_SENDERS 5
 ENV PG_WAL_KEEP_SEGMENTS 60
 ENV PG_MAX_CONNECTIONS 500
