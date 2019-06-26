@@ -1,0 +1,6 @@
+#1 /bin/bash
+
+psql -U postgres -a <<EOF
+CREATE USER $1 WITH CREATEDB PASSWORD '$2';
+CREATE DATABASE $3 OWNER $1;
+EOF

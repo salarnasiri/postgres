@@ -1,0 +1,108 @@
+version: '3.5'
+
+services:
+  pg-master:
+    build: .
+    image: salarn14/postgres:10.9
+    container_name: pg-master
+    restart: always
+    build: .
+    environment:
+      - POSTGRES_USER=superuser;user1;user2
+      - POSTGRES_PASSWORD=spuerpass;pass1;pass2
+      - POSTGRES_DB=pgdb;pgdb2;pgdb3
+      - TZ=Asia/Tehran
+    volumes:
+     - ./volumes/pg-master/postgres/:/var/lib/postgresql/data/
+    ports:
+     - "5555:5432"
+
+  pg-slave:
+    image: registry.bale.ai:2443/balepostgres:1.7.0
+    container_name: pg-slave
+    restart: always
+    environment:
+      - POSTGRES_USER=superuser
+      - POSTGRES_PASSWORD=spuerpass
+      - REPLICATION_HOST=pg-master # master ip
+      - REPLICATION_PORT=5432
+      - TZ=Asia/Tehran
+    volumes:
+     - ./volumes/pg-slave/postgres/:/var/lib/postgresql/data/
+    ports:
+     - "4444:5432"
+
+  pg-slave2:
+    image: registry.bale.ai:2443/balepostgres:1.7.0
+    container_name: pg-slave2
+    restart: always
+    environment:
+      - POSTGRES_USER=superuser
+      - POSTGRES_PASSWORD=spuerpass
+      - REPLICATION_HOST=pg-slave # master ip
+      - REPLICATION_PORT=5432
+      - TZ=Asia/Tehran
+    volumes:
+     - ./volumes/pg-slave2/postgres/:/var/lib/postgresql/data/
+    ports:
+     - "4445:5432"
+
+
+###################### create new db insode old ones ##########################
+### dont forget about add it in docker-compose invironmets
+
+# docker exec pg-master /bin/bash -c "./create_db.sh username password db_name"
+
+
+###################### USER parameters ##########################
+### https://www.postgresql.org/docs/9.5/static/sql-createrole.html 
+###default privileges for first user is SUPERUSER 
+###default privileges for other users is CREATEDB
+
+### privileges sample:
+### SUPERUSER;CREATEROLE;VALID UNTIL '2005-01-01';CONNECTION LIMIT connlimit;
+
+# you can change other users privileges by addding this env to master
+#- OTHER_USER_PRIVILEGES=CREATEDB;REPLICATION
+
+# docker exec pg-slave /bin/bash -c "touch /tmp/touch_me_to_promote_me_to_master"
+
+
+
+####################### slave of other postrges #############################
+# docker exec -it pg-master bash
+
+# cat >> ${PGDATA}/postgresql.conf <<EOF       ###### havaseet be inja bashe shaiad PGDATA set nashode bashe 
+# wal_level = hot_standby
+# max_wal_senders = 10
+# wal_keep_segments = 50
+# hot_standby = on
+# EOF
+
+# { echo; echo "host replication all all md5"; } | gosu postgres tee -a "$PGDATA/pg_hba.conf" > /dev/null
+
+# psql -U postgres -c "ALTER USER <user> WITH REPLICATION;"
+
+############## replication status ########################
+##select client_addr, state, sent_location, write_location, flush_location, replay_location from pg_stat_replication;
+
+########################### READ ONLY ###############################
+##### First, grant connect access:
+
+# GRANT CONNECT ON DATABASE table_name TO username;
+
+##### Then grant usage on schema
+
+# GRANT USAGE ON SCHEMA public TO username;
+
+##### For a specific table
+
+# GRANT SELECT ON table_name TO username;
+
+##### For multiple tables
+
+# GRANT SELECT ON ALL TABLES IN SCHEMA public TO username;
+
+##### If you want to grant access to the new table in the future automatically, you have to alter default:
+
+# ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO username;
